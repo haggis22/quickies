@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		
+		<style>
+		
+		#paused-state
+		{
+			display: none;
+		}
+		
+		#life-table
+		{
+			border: 2px solid gold;
+			margin: 10px;
+		}
+		
+		#life-table td
+		{
+			width: 20px;
+			height: 3px;
+			text-align: center;
+		}
+		
+		#life-table .alive
+		{
+			background: #000;
+		}
+		
+		#life-table .dead
+		{
+			background: #eee;
+		}
+
+		</style>
+		
+	</head>
+	<body>
+	
+		<h3>Game of Life <span id="paused-icon">[ PAUSED ]</span></h3>
+	
+		<div class="buttons">
+			<button type="button" class="pause">Pause</button>
+			<button type="button" class="restart">Restart</button>
+		</div>
+	
+		<div>
+			<table id="life-table">
+				
+				<tbody>
+				</tbody>	
+				
+			</table>
+		
+		</div>
+	
+		<script>
+
+		"use strict";
+
+		class Game
+		{
+			
+			constructor(size, chance)
+			{
+				this.size = size;
+				this.chance = chance || 0.1;
+				this.paused = false;
+
+				// initialize the cells to all be dead
+				this.cells = [];
+				
+				for (let row=0; row < size; row++)
+				{
+					this.cells.push(Array(size).fill(false));
+				}
+			}
+			
+			initialize()
+			{
+				console.log('Game initialize');
+				
+				// reset the cells randomly
+				for (let row=0; row < this.size; row++)
+				{
+					for (let col=0; col < this.size; col++)
+					{
+						this.cells[row][col] = (Math.random() < this.chance);
+					}
+				}
+			}
+			
+			isAlive(row, col)
+			{
+				if (row >= 0 && row < this.size && col >= 0 && col < this.size && this.cells[row][col])
+				{
+					return 1;
+				}
+				
+				return 0;
+			}
+
+			countLiveNeighbors(row, col)
+			{
+				let numNeighbors = this.isAlive(row-1, col-1)
+									+ this.isAlive(row-1, col)
+									+ this.isAlive(row-1, col+1)
+									+ this.isAlive(row, col-1)
+									+ this.isAlive(row, col+1)
+									+ this.isAlive(row+1, col-1)
+									+ this.isAlive(row+1, col)
+									+ this.isAlive(row+1, col+1);
+				
+				return numNeighbors;
+			}
+
+			
+			tick()
+			{
+				if (this.paused)
+				{
+					return;
+				}
+				
+				console.log('Not paused, proceeeding');
+			
+				let newCells = [];
+				
+				for (let row=0; row < this.size; row++)
+				{
+					let newRow = [];
+					
+					for (let col=0; col < this.size; col++)
+					{
+						if (this.cells[row][col])
+						{
+							// currently alive
+							switch (this.countLiveNeighbors(row, col))
+							{
+								case 2:
+								case 3:
+									newRow.push(true);
+									break;
+									
+								default:
+									newRow.push(false);
+									break;
+							}
+						}
+						else
+						{
+							// currently dead
+							if (this.countLiveNeighbors(row, col) == 3)
+							{
+								newRow.push(true);
+							}
+							else
+							{
+								newRow.push(false);
+							}
+						
+						}
+						
+					}
+					
+					newCells.push(newRow);
+				}
+				
+				this.cells = newCells;
+
+			}  // tick
+			
+			togglePause()
+			{
+				this.paused = !this.paused;
+				console.log(`Game paused? ${this.paused}`);
+			}
+
+		}  // class Game declaration
+
+		class Board
+		{
+			constructor(game)
+			{
+				this.game = game;
+			}
+			
+			draw()
+			{
+				let tableBody = document.querySelector('#life-table tbody');
+				
+				for (let row=0; row < this.game.size; row++)
+				{
+					let tr = tableBody.insertRow();
+					
+					for (let col=0; col < this.game.size; col++)
+					{
+						let cell = tr.insertCell();
+						cell.innerHTML = "&nbsp;";
+						cell.classList.add('cell');
+						cell.setAttribute('data-row-id', row);
+						cell.setAttribute('data-col-id', col);
+						
+					}  // for col
+					
+				}  // for row
+				
+			}  // draw
+			
+			update()
+			{
+				let pausedIcon = document.querySelector('#paused-icon');
+				if (this.game.paused)
+				{
+					pausedIcon.style.display = 'inline-block';
+				}
+				else
+				{
+					pausedIcon.style.display = 'none';
+				}
+				
+				
+				let tableBody = document.querySelector('#life-table tbody');
+				
+				for (let rowID=0; rowID < tableBody.children.length; rowID++)
+				{
+					let row = tableBody.children[rowID];
+					
+					for (let colID=0; colID < row.children.length; colID++)
+					{
+						let cell = row.children[colID];
+
+						if (this.game.cells[rowID][colID])
+						{
+							cell.classList.remove('dead');
+							cell.classList.add('alive');
+						}
+						else
+						{
+							cell.classList.remove('alive');
+							cell.classList.add('dead');
+						}
+								
+					}  // for colID
+					
+				}  // for rowID
+
+			}  // update
+			
+		}  // class Board declaration
+
+
+		function setup()
+		{
+			console.log('In setup');
+			
+			let game = new Game(40, 0.6);
+			let board = new Board(game);
+			board.draw();
+
+			let paused = true;
+
+
+//			document.querySelector('button.pause').addEventListener('click', function() { togglePause(); });
+//			document.querySelector('button.restart').addEventListener('click', startGame);
+			
+			document.addEventListener('click', function(e) {
+				
+				if (e.target && e.target.classList)
+				{
+					if (e.target.classList.contains('pause'))
+					{
+						togglePause();
+					}
+					else if (e.target.classList.contains('restart'))
+					{
+						startGame();
+					}
+					else if (e.target.classList.contains('cell'))
+					{
+						flipCell(e.target);
+						board.update();
+					}
+				}
+				
+			});
+			
+			
+			
+			function startGame()
+			{
+				game.initialize();
+				board.update();
+			}
+			
+			// kick it off the first time
+			startGame();
+			
+			function takeTurn()
+			{
+				game.tick();
+				board.update();	
+			}
+	
+			let timer = null;
+
+			function togglePause()
+			{
+				if (timer)
+				{
+					clearInterval(timer);
+				}
+				
+				paused = !paused;
+				
+				if (paused == false)
+				{
+					timer = setInterval(takeTurn, 300);
+				}
+			}
+
+			togglePause();
+			
+			function flipCell(cell)
+			{
+				let rowIndex = parseInt(cell.getAttribute('data-row-id'), 10);
+				let colIndex = parseInt(cell.getAttribute('data-col-id'), 10);
+
+				game.cells[rowIndex][colIndex] = !game.cells[rowIndex][colIndex];
+				
+				
+/*				
+				// flip whether the cell is alive or dead
+				for (let row=rowIndex-1; row < rowIndex+2; row++)
+				{
+					for (let col=colIndex-1; col < colIndex+2; col++)
+					{
+						if (row >= 0 && col >= 0 && row < game.size && col < game.size)
+						{
+							game.cells[row][col] = !game.cells[row][col];
+						}
+					}
+				}
+*/
+
+				
+			}
+
+			
+		}
+		
+		window.addEventListener('load', setup);
+
+		</script>
+	
+	</body>
+	
+</html>
+
